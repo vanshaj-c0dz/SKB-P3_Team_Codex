@@ -1,12 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { SideNavBar } from "@/components/layout/SideNavBar";
-import { TopAppBar } from "@/components/layout/TopAppBar";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { MapWidget } from "@/components/dashboard/MapWidget";
-import { DiscoveriesList } from "@/components/dashboard/DiscoveriesList";
-import { getDashboardData } from "@/lib/mockData";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { SimulationForm } from "@/components/dashboard/SimulationForm";
+import { SimulationResults } from "@/components/dashboard/SimulationResults";
+import { runSimulation } from "@/lib/simulation";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -19,7 +17,25 @@ const containerVariants = {
 };
 
 export default function Dashboard() {
-  const data = getDashboardData();
+  const [simStatus, setSimStatus] = useState("idle"); // 'idle' | 'loading' | 'complete'
+  const [simResults, setSimResults] = useState(null);
+
+  const handleSimulate = async (formData) => {
+    setSimStatus("loading");
+    try {
+      const results = await runSimulation(formData);
+      setSimResults(results);
+      setSimStatus("complete");
+    } catch (e) {
+       console.error(e);
+       setSimStatus("idle");
+    }
+  };
+
+  const handleClear = () => {
+    setSimStatus("idle");
+    setSimResults(null);
+  };
 
   return (
     <main className="p-8 overflow-y-auto flex-1 flex flex-col gap-8">
@@ -30,8 +46,8 @@ export default function Dashboard() {
         className="flex justify-between items-end"
       >
         <div>
-          <h2 className="text-3xl font-headline font-bold text-primary-container">Global Intelligence</h2>
-          <p className="text-on-surface-variant font-body text-sm mt-1">Real-time macro-analysis of breeding network performance.</p>
+          <h2 className="text-3xl font-headline font-bold text-primary-container">Global Intelligence & Simulation</h2>
+          <p className="text-on-surface-variant font-body text-sm mt-1">Real-time macro-analysis & predictive scenarios.</p>
         </div>
         <div className="flex gap-2">
           <span className="inline-flex items-center gap-1 px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-label font-medium">
@@ -40,26 +56,35 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
-      >
-        {data.metrics.map(metric => (
-          <MetricCard key={metric.id} metric={metric} />
-        ))}
-      </motion.div>
+      {/* Simulation Form Panel */}
+      <SimulationForm onSimulate={handleSimulate} isSimulating={simStatus === "loading"} />
 
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[400px]"
-      >
-        <MapWidget />
-        <DiscoveriesList discoveries={data.discoveries} />
-      </motion.div>
+      <AnimatePresence mode="wait">
+        {simStatus === "complete" && simResults ? (
+          <motion.div
+            key="results"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+          >
+            <SimulationResults results={simResults} onClose={handleClear} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="placeholder"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            exit={{ opacity: 0 }}
+            className={`flex flex-col items-center justify-center min-h-[300px] border border-dashed border-outline-variant rounded-xl mt-4 transition-opacity duration-500 ${
+              simStatus === "loading" ? "opacity-30 pointer-events-none select-none blur-[2px]" : ""
+            }`}
+          >
+            <span className="material-symbols-outlined text-outline text-5xl mb-4">analytics</span>
+            <p className="text-on-surface-variant font-label text-sm uppercase tracking-wider">Awaiting Simulation Parameters</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </main>
   );
