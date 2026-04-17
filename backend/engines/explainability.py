@@ -129,10 +129,25 @@ class ModelExplainer:
 		# Aggregate absolute genomic attribution across the non-feature dimensions to rank loci.
 		if genomic_attr.ndim == 3:
 			genomic_importance = genomic_attr.abs().mean(dim=0).mean(dim=0)  # (Num_SNPs,)
+			genomic_mean_raw = genomic_attr.mean(dim=0).mean(dim=0) # raw attribution to check sign
 		else:
 			genomic_importance = genomic_attr.abs().mean(dim=0).reshape(-1)  # flattened image importance
+			genomic_mean_raw = genomic_attr.mean(dim=0).reshape(-1)
+
 		k_snp = min(top_k, int(genomic_importance.numel()))
 		top_snp_indices = torch.topk(genomic_importance, k=k_snp).indices.tolist()
+
+		snp_importance_scores = []
+		for idx in top_snp_indices:
+			raw_val = float(genomic_mean_raw[idx].item())
+			role = "beneficial" if raw_val > 0 else "risk"
+			snp_importance_scores.append({
+				"snp_id": f"SNP_{idx}",
+				"index": int(idx),
+				"importance": float(genomic_importance[idx].item()),
+				"role":  role,
+				"raw_score": raw_val
+			})
 
 		# Convert env attribution to day importance by summing across weather features,
 		# then averaging across batch for robust ranking.
@@ -142,7 +157,9 @@ class ModelExplainer:
 
 		return {
 			"top_snps": [int(i) for i in top_snp_indices],
+			"snp_importance_scores": snp_importance_scores,
 			"critical_weather_days": [int(i) for i in top_day_indices],
+			"env_daily_importance": [float(x) for x in day_importance.tolist()],
 		}
 
 

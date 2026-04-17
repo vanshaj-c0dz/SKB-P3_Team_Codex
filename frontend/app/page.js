@@ -5,41 +5,46 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SimulationForm } from "@/components/dashboard/SimulationForm";
 import { SimulationResults } from "@/components/dashboard/SimulationResults";
 import { runSimulation } from "@/lib/simulation";
+import { useSimulation } from "@/lib/SimulationContext";
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    }
-  }
+    transition: { staggerChildren: 0.1 },
+  },
 };
 
 export default function Dashboard() {
   const [simStatus, setSimStatus] = useState("idle"); // 'idle' | 'loading' | 'complete'
   const [simResults, setSimResults] = useState(null);
 
+  // Write to global context so Omics Fusion & other pages can read it
+  const { setResults: setGlobalResults, setFormInputs } = useSimulation();
+
   const handleSimulate = async (formData) => {
     setSimStatus("loading");
+    setFormInputs(formData);  // store what the user submitted globally
     try {
       const results = await runSimulation(formData);
       setSimResults(results);
+      setGlobalResults(results); // ← share with all pages
       setSimStatus("complete");
     } catch (e) {
-       console.error(e);
-       setSimStatus("idle");
+      console.error(e);
+      setSimStatus("idle");
     }
   };
 
   const handleClear = () => {
     setSimStatus("idle");
     setSimResults(null);
+    // Keep global results so other pages still show the last run
   };
 
   return (
     <main className="p-8 overflow-y-auto flex-1 flex flex-col gap-8">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
@@ -82,10 +87,10 @@ export default function Dashboard() {
           >
             <span className="material-symbols-outlined text-outline text-5xl mb-4">analytics</span>
             <p className="text-on-surface-variant font-label text-sm uppercase tracking-wider">Awaiting Simulation Parameters</p>
+            <p className="text-on-surface-variant/60 text-xs mt-1">Upload a VCF file, drop a map pin, and hit Simulate</p>
           </motion.div>
         )}
       </AnimatePresence>
-
     </main>
   );
 }

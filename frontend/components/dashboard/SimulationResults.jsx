@@ -1,7 +1,13 @@
 "use client";
 import { motion } from "framer-motion";
-import { AreaChart, Area, LineChart, Line, BarChart, Bar, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, LineChart, Line, BarChart, Bar, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from "recharts";
 import { MetricCard } from "./MetricCard";
+import { YieldComparisonChart } from "./YieldComparisonChart";
+import { GenomicManhattanChart } from "./GenomicManhattanChart";
+import { WeatherCalendarHeatmap } from "./WeatherCalendarHeatmap";
+import { ParentalMatchmaker } from "./ParentalMatchmaker";
+import { BlueprintKanban } from "./BlueprintKanban";
+import { ClimateRadarChart } from "./ClimateRadarChart";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -19,49 +25,53 @@ const itemVariants = {
 export function SimulationResults({ results, onClose }) {
   if (!results) return null;
 
-  // Build metrics for existing component
   const metrics = [
     {
       id: "best-variant",
-      label: "Best Genotype ID",
+      title: "Best Parental Cross",
       value: results.best_genotype_id,
       unit: "",
-      trend: "neutral",
-      trendValue: "Selected from 20 variants",
+      subtitle: `From ${results.genotype_count ?? "?"} genotypes analysed`,
       icon: "psychiatry",
-      color: "primary-container"
+      iconColorClass: "text-primary-container"
     },
     {
       id: "resilience-score",
-      label: "Climate Resilience",
+      title: "Climate Resilience",
       value: results.climate_resilience_score,
       unit: "/100",
-      trend: "up",
-      trendValue: "High Survivability Index",
+      trend: { direction: "up", value: "High", label: "Survivability Index" },
       icon: "wb_sunny",
-      color: "secondary"
+      iconColorClass: "text-secondary"
     },
     {
       id: "baseline-yield",
-      label: "Baseline Yield Predict",
+      title: "Baseline Yield Predict",
       value: results.baseline_yield,
       unit: " kg/ha",
-      trend: "chart",
-      trendValue: "",
+      subtitle: `${results.crop_type ?? "Crop"} · AI Model Output`,
       icon: "bar_chart",
-      color: "tertiary-container",
-      chartConfig: [
-        { height: "20%", color: "bg-surface-container-highest" },
-        { height: "40%", color: "bg-surface-container-highest" },
-        { height: "60%", color: "bg-surface-container-highest" },
-        { height: "85%", color: "bg-tertiary-container" },
-        { height: "100%", color: "bg-tertiary-container" },
-      ]
+      iconColorClass: "text-tertiary-container"
     }
   ];
 
+  // Yield stability from parental crosses data for line chart
+  const yieldStabilityData = (results.top_parental_crosses ?? []).map((c) => ({
+    name: c.cross_id,
+    yield: c.yield_pred,
+    resilience: c.resilience_score,
+  }));
+
+  // Stress comparison static reference data
+  const stressData = [
+    { name: "Heat", impact: -15 },
+    { name: "Water", impact: -22 },
+    { name: "Pest", impact: -5 },
+    { name: "Salinity", impact: -8 },
+  ];
+
   return (
-    <motion.div 
+    <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -69,12 +79,27 @@ export function SimulationResults({ results, onClose }) {
     >
       <div className="flex justify-between items-end mb-2">
         <div>
-          <h2 className="text-2xl font-headline font-bold text-primary-container">Simulation Engine Output</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-2xl font-headline font-bold text-primary-container">Simulation Engine Output</h2>
+            {results._data_source === "mock" ? (
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-300 rounded-full">
+                Demo Mode
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-green-100 text-green-700 border border-green-300 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block animate-pulse" />
+                Live AI
+              </span>
+            )}
+          </div>
           <p className="text-on-surface-variant font-body text-sm mt-1">
-            PyTorch MasterBreedingModel finished. Scenario: 50 dangerous future climates evaluated.
+            PyTorch MasterBreedingModel · 50 climate scenarios · Captum XAI active
+            {results.stress_scenario && (
+              <> · <span className="text-error font-medium">{results.stress_scenario}</span></>
+            )}
           </p>
         </div>
-        <button 
+        <button
           onClick={onClose}
           className="text-outline hover:text-on-surface text-sm font-label flex items-center gap-1"
         >
@@ -83,129 +108,119 @@ export function SimulationResults({ results, onClose }) {
         </button>
       </div>
 
-      {/* Top Cards */}
+      {/* 🌊 Ocean Location Warning Banner */}
+      {results.location_warning && (
+        <motion.div
+          variants={itemVariants}
+          className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-5 py-3"
+        >
+          <span className="material-symbols-outlined text-amber-500 text-[22px]">water</span>
+          <div>
+            <p className="text-sm font-bold text-amber-600 dark:text-amber-400">Ocean/Marine Zone Detected</p>
+            <p className="text-xs text-amber-700/80 dark:text-amber-300/70">{results.location_warning} — Scores reflect severely reduced agricultural viability.</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {metrics.map(metric => (
           <MetricCard key={metric.id} metric={metric} />
         ))}
       </div>
 
+      {/* Baseline vs Extreme Yield Dashboard (Task 4) */}
+      <YieldComparisonChart results={results} />
+
+      {/* Batch 3: Climate Matrix and XAI Genomic Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Charts Section */}
-        <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <motion.div variants={itemVariants} className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 tincture-shadow flex flex-col h-64">
-            <h3 className="font-headline font-bold text-sm text-on-surface mb-4">50 Climate Scenarios</h3>
-            <div className="flex-1 w-full h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={Array.from({length: 50}, (_, i) => ({ day: i, yield: 3000 + Math.random()*2000 - (i > 30 ? 500 : 0) }))}>
-                  <defs>
-                    <linearGradient id="colorYield" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3c692b" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3c692b" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <Tooltip />
-                  <Area type="monotone" dataKey="yield" stroke="#3c692b" fillOpacity={1} fill="url(#colorYield)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
+        <ClimateRadarChart results={results} />
+        <GenomicManhattanChart results={results} />
+      </div>
 
-          <motion.div variants={itemVariants} className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 tincture-shadow flex flex-col h-64">
-            <h3 className="font-headline font-bold text-sm text-on-surface mb-4">Yield Stability Trends</h3>
-            <div className="flex-1 w-full h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={[
-                  { name: 'Baseline', value: 3450 },
-                  { name: 'Drought', value: 3100 },
-                  { name: 'Heatwave', value: 2900 },
-                  { name: 'Combined', value: 2750 },
-                ]}>
-                  <Tooltip cursor={{fill: 'transparent'}}/>
-                  <Line type="monotone" dataKey="value" stroke="#002c54" strokeWidth={3} dot={{r: 4}} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
+      {/* Batch 4: Enviromics Calendar and Parental Matchmaker */}
+      <WeatherCalendarHeatmap results={results} />
+      <ParentalMatchmaker results={results} />
 
-          <motion.div variants={itemVariants} className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 tincture-shadow flex flex-col h-64">
-            <h3 className="font-headline font-bold text-sm text-on-surface mb-4">Stress Comparison</h3>
-            <div className="flex-1 w-full h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { name: 'Heat', impact: -15 },
-                  { name: 'Water', impact: -22 },
-                  { name: 'Pest', impact: -5 },
-                  { name: 'Salinity', impact: -8 },
-                ]}>
-                  <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}}/>
-                  <Bar dataKey="impact" fill="#ba1a1a" radius={[0, 0, 4, 4]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
-        </div>
+      {/* Batch 5: Agronomic Blueprint Kanban */}
+      <BlueprintKanban results={results} />
 
-        {/* Explainable AI Panel (XAI) */}
-        <motion.div variants={itemVariants} className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/15 shadow-sm flex flex-col gap-4">
-           <div className="flex items-center gap-2 mb-2">
-             <span className="material-symbols-outlined text-tertiary-container">troubleshoot</span>
-             <h3 className="font-headline font-bold text-lg text-on-surface">Captum XAI Insights</h3>
-           </div>
-           
-           <div className="grid grid-cols-2 gap-4">
-             <div className="bg-secondary-container/30 rounded-lg p-4">
-                <h4 className="text-xs font-label uppercase text-on-secondary-container mb-3 tracking-wider flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">bolt</span>
-                  Positive Genes
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {results.xai_insights.top_positive_genes.map(gene => (
-                    <span key={gene} className="px-3 py-1 bg-secondary text-white text-xs rounded-full font-mono">{gene}</span>
-                  ))}
-                </div>
-             </div>
-
-             <div className="bg-error-container/30 rounded-lg p-4">
-                <h4 className="text-xs font-label uppercase text-error mb-3 tracking-wider flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">warning</span>
-                  Fatal Weather Days
-                </h4>
-                <ul className="text-sm font-body text-on-surface flex flex-col gap-2">
-                  {results.xai_insights.fatal_weather_days.map((day, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-xs">
-                      <span className="mt-[2px] w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
-                      {day}
-                    </li>
-                  ))}
-                </ul>
-             </div>
-           </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 50 Climate Scenarios Area Chart — uses real scenario_chart_data */}
+        <motion.div variants={itemVariants} className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 tincture-shadow flex flex-col" style={{ height: 260 }}>
+          <h3 className="font-headline font-bold text-sm text-on-surface mb-3">50 Climate Scenarios (Yield)</h3>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={results.scenario_chart_data ?? []}>
+                <defs>
+                  <linearGradient id="colorYield" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3c692b" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#3c692b" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                <XAxis dataKey="scenario" tick={{ fontSize: 10 }} hide />
+                <YAxis tick={{ fontSize: 10 }} width={36} />
+                <Tooltip formatter={(v) => [`${Math.round(v)} kg/ha`, "Yield"]} />
+                <Area type="monotone" dataKey="yield" stroke="#3c692b" strokeWidth={2} fillOpacity={1} fill="url(#colorYield)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </motion.div>
 
-        {/* Agronomic Blueprint Panel */}
-        <motion.div variants={itemVariants} className="bg-primary hover:bg-primary-container transition-colors rounded-xl p-6 tincture-shadow flex flex-col gap-4 relative overflow-hidden group">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-[100px] -z-0 pointer-events-none"></div>
-           
-           <div className="flex items-center gap-2 mb-2 z-10">
-             <span className="material-symbols-outlined text-secondary-container">architecture</span>
-             <h3 className="font-headline font-bold text-lg text-white">Agronomic Blueprint</h3>
-           </div>
+        {/* Yield Stability — from real parental crosses */}
+        <motion.div variants={itemVariants} className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 tincture-shadow flex flex-col" style={{ height: 260 }}>
+          <h3 className="font-headline font-bold text-sm text-on-surface mb-3">Top Cross Yield Performance</h3>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={yieldStabilityData.length > 0 ? yieldStabilityData : [{ name: "—", yield: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} width={36} />
+                <Tooltip formatter={(v) => [`${v} kg/ha`, "Predicted Yield"]} />
+                <Bar dataKey="yield" fill="#3c692b" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
 
-           <div className="flex flex-col gap-3 z-10 flex-1">
-             {results.agronomic_blueprint.map((rec, i) => (
-               <div key={i} className="flex gap-3 bg-black/20 p-3 rounded-lg border border-white/5">
-                 <span className="w-6 h-6 rounded-full bg-secondary-container text-primary-fixed-variant flex items-center justify-center text-xs font-bold font-mono shrink-0">
-                   {i + 1}
-                 </span>
-                 <p className="text-sm font-body text-surface font-medium leading-relaxed">
-                   {rec}
-                 </p>
-               </div>
-             ))}
-           </div>
+        {/* Stress Comparison */}
+        <motion.div variants={itemVariants} className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 tincture-shadow flex flex-col" style={{ height: 260 }}>
+          <h3 className="font-headline font-bold text-sm text-on-surface mb-3">Stress Impact on Yield (%)</h3>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stressData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} width={36} />
+                <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                <Bar dataKey="impact" fill="#ba1a1a" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </motion.div>
       </div>
+
+      {/* Charts Row ends here */}
+
+      {/* Next Steps */}
+      {results.next_steps?.length > 0 && (
+        <motion.div variants={itemVariants} className="bg-surface-container rounded-xl p-6 border border-outline-variant/15">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="material-symbols-outlined text-secondary">rocket_launch</span>
+            <h3 className="font-headline font-bold text-base text-on-surface">Recommended Next Steps</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {results.next_steps.map((step, i) => (
+              <div key={i} className="flex gap-2 text-sm text-on-surface-variant">
+                <span className="material-symbols-outlined text-outline text-base mt-0.5">arrow_forward</span>
+                {step}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
     </motion.div>
   );

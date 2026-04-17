@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
+import { VcfDropzone } from "./VcfDropzone";
 
 // Dynamically import map to avoid SSR window issues
 const LocationMap = dynamic(() => import("./LocationMap"), { ssr: false, loading: () => <div className="w-full h-full bg-surface-container-low animate-pulse rounded-xl"></div> });
@@ -9,7 +10,8 @@ const LocationMap = dynamic(() => import("./LocationMap"), { ssr: false, loading
 export function SimulationForm({ onSimulate, isSimulating }) {
   const [formData, setFormData] = useState({
     file: null,
-    locationCoords: null, // {lat, lng}
+    session_id: null,      // set by VcfDropzone after upload
+    locationCoords: null,  // {lat, lng}
     locationInput: "",
     crop: "Soybean",
     stress: "Extreme Drought + Heatwave"
@@ -45,29 +47,16 @@ export function SimulationForm({ onSimulate, isSimulating }) {
         
         {/* Left Column: Data & Parameters */}
         <div className="flex-1 flex flex-col gap-6">
-          {/* VCF Upload */}
-          <div className="flex flex-col gap-2">
-            <label className="text-on-surface-variant font-label text-sm uppercase tracking-wider">Genomic Data (.vcf)</label>
-            <div className="border border-dashed border-outline-variant bg-surface-container-low rounded-xl p-6 flex items-center gap-4 cursor-pointer hover:bg-surface-bright transition-colors relative w-full">
-               <div className="w-12 h-12 rounded-full bg-secondary-container/50 flex items-center justify-center text-primary shrink-0">
-                  <span className="material-symbols-outlined text-2xl">science</span>
-               </div>
-               <div className="flex flex-col">
-                 <span className="font-headline font-bold text-on-surface">
-                   {formData.file ? formData.file.name : "Upload DNA Variant File"}
-                 </span>
-                 <span className="text-sm font-medium text-on-surface-variant">
-                   {formData.file ? "File ready for CNN ingestion" : "Drag & Drop or Click to Browse"}
-                 </span>
-               </div>
-               <input 
-                 type="file" 
-                 accept=".vcf"
-                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                 onChange={(e) => setFormData({...formData, file: e.target.files[0]})}
-               />
-            </div>
-          </div>
+          {/* VCF Upload — powered by VcfDropzone (Task 1) */}
+          <VcfDropzone
+            onFileReady={(info) =>
+              setFormData((prev) => ({
+                ...prev,
+                file: info?.file ?? null,
+                session_id: info?.session_id ?? null,
+              }))
+            }
+          />
 
           <div className="grid grid-cols-2 gap-4">
             {/* Crop Type */}
