@@ -1,0 +1,20 @@
+crops:
+  soybean:
+    target_traits:
+      - yield
+      - drought_tolerance
+      - heat_tolerance
+    physiological_constraints:
+      max_heat_tolerance_celsius: 45
+      min_rainfall_mm: 150
+      max_vpd_kpa: 3.2
+
+  wheat:
+    target_traits:
+      - yield
+      - lodging_resistance
+      - grain_protein
+    physiological_constraints:
+      max_heat_tolerance_celsius: 38
+      min_rainfall_mm: 220
+      frost_risk_days_threshold: 6
