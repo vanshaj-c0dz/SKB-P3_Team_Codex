@@ -27,7 +27,7 @@ class ModelExplainer:
 
 		Args:
 			model: Trained multimodal model returning trait dictionary.
-			genomic_tensor: SNP tensor of shape (B, 1, Num_SNPs).
+			genomic_tensor: DNA tensor of shape (B, C, H, W) or legacy SNP tensor (B, 1, Num_SNPs).
 			env_tensor: Weather tensor of shape (B, Seq_Len, Num_Features).
 			target_trait_index: Index of trait to explain from model output ordering.
 
@@ -37,9 +37,10 @@ class ModelExplainer:
 			- env_attr has shape matching env_tensor
 		"""
 		if genomic_tensor.ndim != 3:
-			raise ValueError(
-				f"genomic_tensor must have shape (batch, 1, num_snps), got {tuple(genomic_tensor.shape)}"
-			)
+			if genomic_tensor.ndim != 4:
+				raise ValueError(
+					f"genomic_tensor must have shape (batch, 1, num_snps) or (batch, channels, height, width), got {tuple(genomic_tensor.shape)}"
+				)
 		if env_tensor.ndim != 3:
 			raise ValueError(
 				f"env_tensor must have shape (batch, sequence, num_features), got {tuple(env_tensor.shape)}"
@@ -114,9 +115,10 @@ class ModelExplainer:
 			- critical_weather_days: day indices with highest importance
 		"""
 		if genomic_attr.ndim != 3:
-			raise ValueError(
-				f"genomic_attr must have shape (batch, 1, num_snps), got {tuple(genomic_attr.shape)}"
-			)
+			if genomic_attr.ndim != 4:
+				raise ValueError(
+					f"genomic_attr must have shape (batch, 1, num_snps) or (batch, channels, height, width), got {tuple(genomic_attr.shape)}"
+				)
 		if env_attr.ndim != 3:
 			raise ValueError(
 				f"env_attr must have shape (batch, sequence, num_features), got {tuple(env_attr.shape)}"
@@ -124,8 +126,11 @@ class ModelExplainer:
 		if top_k < 1:
 			raise ValueError("top_k must be >= 1")
 
-		# Aggregate absolute genomic attribution across batch and channel to rank SNPs.
-		genomic_importance = genomic_attr.abs().mean(dim=0).mean(dim=0)  # (Num_SNPs,)
+		# Aggregate absolute genomic attribution across the non-feature dimensions to rank loci.
+		if genomic_attr.ndim == 3:
+			genomic_importance = genomic_attr.abs().mean(dim=0).mean(dim=0)  # (Num_SNPs,)
+		else:
+			genomic_importance = genomic_attr.abs().mean(dim=0).reshape(-1)  # flattened image importance
 		k_snp = min(top_k, int(genomic_importance.numel()))
 		top_snp_indices = torch.topk(genomic_importance, k=k_snp).indices.tolist()
 

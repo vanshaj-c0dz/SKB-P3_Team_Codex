@@ -124,7 +124,7 @@ class ClimateScenarioGenerator:
 			Dictionary of trait predictions, where each tensor has first dimension
 			equal to num_scenarios.
 		"""
-		if genomic_tensor.ndim != 3:
+		if genomic_tensor.ndim != 4:
 			raise ValueError("genomic_tensor must have shape (1, 3, 206, 206)")
 		if genomic_tensor.size(0) != 1:
 			raise ValueError("genomic_tensor batch dimension must be 1")
@@ -134,7 +134,7 @@ class ClimateScenarioGenerator:
 			)
 
 		num_scenarios = batch_env_tensors.size(0)
-		expanded_genomic = genomic_tensor.expand(num_scenarios, -1, -1)
+		expanded_genomic = genomic_tensor.expand(num_scenarios, -1, -1, -1)
 
 		model_device = next(model.parameters()).device
 		expanded_genomic = expanded_genomic.to(model_device)
