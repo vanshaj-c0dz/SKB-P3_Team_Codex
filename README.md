@@ -1,15 +1,51 @@
-# SKB-P3 Team Codex
+# Project Title
 
-Welcome to the SKB-P3 Team Codex repository! This project contains code and resources for the SKB-P3 team.
+## Team Information
 
-## About
-This repository is a collaborative effort by Team Codex to develop and maintain project resources.
+* **Team Name:** Your Team Name
+* **Team ID:** Your Team ID
 
-## Getting Started
-To get started with this project, clone the repository and follow the setup instructions in the documentation.
+## Project Description
 
-## Contributing
-Contributions are welcome! Please feel free to submit pull requests and open issues for any bugs or feature requests.
+This project is developed to solve a specific problem efficiently. It includes useful features, clean architecture, and scalable code structure. The project is built using modern technologies and best coding practices.
 
-## License
-This project is open source and available under the MIT License.
+## Folder Structure
+
+```text
+project-root/
+│── src/
+│   ├── components/
+│   ├── pages/
+│   ├── assets/
+│   └── utils/
+│── public/
+│── docs/
+│── tests/
+│── README.md
+│── package.json
+│── .gitignore
+```
+
+## Installation
+
+```bash
+npm install
+```
+
+## Run Project
+
+```bash
+npm start
+```
+
+## Technologies Used
+
+* To be decided...
+
+## Contributors
+
+* Vanshaj Sharma 
+* Shlok Dadhich
+* Sanchit Garg
+* Abhinav Pandey
+* Arijeet Tripathi
