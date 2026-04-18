@@ -19,6 +19,8 @@ async def predict_breeding(
     crop_type: str = Form("Soybean", description="Crop type"),
     stress_scenario: str = Form("Extreme Drought + Heatwave", description="Stress scenario label"),
     max_samples: int = Form(None, description="Max samples (optional)"),
+    heat_delta: float = Form(None, description="Custom heat delta for scenarios"),
+    drought_multiplier: float = Form(None, description="Custom drought multiplier for scenarios"),
 ):
     """
     Main prediction endpoint.
@@ -46,6 +48,8 @@ async def predict_breeding(
             max_samples=max_samples if max_samples else None,
             batch_inference_size=8,
             model_weights_path=str(weights_path) if weights_path.exists() else None,
+            heat_delta=heat_delta,
+            drought_multiplier=drought_multiplier,
         )
 
         return JSONResponse(result)

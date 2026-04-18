@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export function VcfDropzone({ onFileReady }) {
-  const [status, setStatus] = useState("idle"); // idle | uploading | ready | error
-  const [fileInfo, setFileInfo] = useState(null);
+export function VcfDropzone({ onFileReady, initialFileInfo }) {
+  const [status, setStatus] = useState(initialFileInfo ? "ready" : "idle"); // idle | uploading | ready | error
+  const [fileInfo, setFileInfo] = useState(initialFileInfo || null);
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
 

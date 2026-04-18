@@ -117,16 +117,6 @@ export function AttentionNexus({ xaiInsights, scenarioData }) {
         </div>
       )}
 
-      <div className="bg-surface-container-highest rounded-xl p-4 mt-auto">
-        <h4 className="text-xs font-bold text-stone-300 mb-3 tracking-tight">Parameters Console</h4>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Similarity Threshold</span>
-          <div className="flex items-center gap-3 w-1/2">
-            <input type="range" min="0" max="100" defaultValue="85" className="w-full h-1 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-secondary" />
-            <span className="text-xs font-bold text-secondary">85%</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

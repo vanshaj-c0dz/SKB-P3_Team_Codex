@@ -5,8 +5,12 @@ import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tool
 export function ClimateRadarChart({ results }) {
   if (!results) {
     return (
-      <div className="bg-surface-container rounded-2xl p-6 h-[400px] flex items-center justify-center border border-outline-variant/15">
-        <p className="text-sm font-label text-on-surface-variant">Awaiting simulation data for Climate Radar...</p>
+      <div className="bg-surface-container rounded-2xl p-6 h-[380px] flex flex-col items-center justify-center gap-3 border border-outline-variant/15">
+        <span className="material-symbols-outlined text-outline text-4xl">explore</span>
+        <p className="text-sm font-label font-bold text-on-surface-variant">Climate Resilience Matrix</p>
+        <p className="text-xs text-on-surface-variant/60 text-center max-w-[230px]">
+          Awaiting 50-scenario inference from the PyTorch climate engine to compute survival rates.
+        </p>
       </div>
     );
   }

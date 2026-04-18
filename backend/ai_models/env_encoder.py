@@ -158,4 +158,43 @@ class EnvTransformerEncoder(nn.Module):
 		return x.mean(dim=1)
 
 
-__all__: list[str] = ["EnvTransformerEncoder"]
+class SoilEncoder(nn.Module):
+	"""Encode fixed 12-dimensional soil configurations into a continuous embedding.
+
+	Input: (batch_size, 12)
+	Output: (batch_size, soil_feature_dim)
+	"""
+
+	def __init__(
+		self,
+		num_soil_features: int = 12,
+		soil_feature_dim: int = 64,
+		dropout: float = 0.1,
+	) -> None:
+		super().__init__()
+		if num_soil_features < 1:
+			raise ValueError("num_soil_features must be >= 1")
+		if soil_feature_dim < 1:
+			raise ValueError("soil_feature_dim must be >= 1")
+
+		self.num_soil_features = num_soil_features
+		self.soil_feature_dim = soil_feature_dim
+
+		self.net = nn.Sequential(
+			nn.Linear(num_soil_features, max(num_soil_features * 2, soil_feature_dim)),
+			nn.LayerNorm(max(num_soil_features * 2, soil_feature_dim)),
+			nn.GELU(),
+			nn.Dropout(dropout),
+			nn.Linear(max(num_soil_features * 2, soil_feature_dim), soil_feature_dim),
+			nn.LayerNorm(soil_feature_dim),
+		)
+
+	def forward(self, x: Tensor) -> Tensor:
+		if x.ndim != 2:
+			raise ValueError(f"Expected input shape (batch_size, num_soil_features), got {tuple(x.shape)}")
+		if x.size(-1) != self.num_soil_features:
+			raise ValueError(f"Expected num_soil_features={self.num_soil_features}, got {x.size(-1)}")
+		return self.net(x.float())
+
+
+__all__: list[str] = ["EnvTransformerEncoder", "SoilEncoder"]

@@ -16,6 +16,10 @@ export function ParametersSidebar({ params, setParams, onRunSimulation, isSimula
       <div className="flex items-center gap-3 border-b border-outline-variant/20 pb-4">
         <span className="material-symbols-outlined text-primary text-xl">tune</span>
         <h3 className="font-headline font-bold text-primary-container">Scenario Parameters</h3>
+        <span className="ml-auto flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-secondary px-2 py-0.5 bg-secondary/10 rounded-full border border-secondary/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-secondary inline-block animate-pulse" />
+          Live
+        </span>
       </div>
 
       <div className="flex flex-col gap-5">
@@ -40,6 +44,13 @@ export function ParametersSidebar({ params, setParams, onRunSimulation, isSimula
             <span>+2°C (Moderate)</span>
             <span>+4°C (Extreme)</span>
           </div>
+          {/* Live effect label */}
+          <p className="text-[9px] text-stone-400 italic">
+            Heat stress: {params.heatDelta > 2.5
+              ? `${(Math.pow(params.heatDelta - 2.0, 2) * 4.5).toFixed(1)} bu/ac loss (exponential)`
+              : `${(params.heatDelta * 2.0).toFixed(1)} bu/ac loss (linear)`
+            }
+          </p>
         </div>
 
         {/* Drought Duration Slider */}
@@ -62,6 +73,9 @@ export function ParametersSidebar({ params, setParams, onRunSimulation, isSimula
             <span>30d (Severe)</span>
             <span>60d (Catastrophic)</span>
           </div>
+          <p className="text-[9px] text-stone-400 italic">
+            Drought stress: {((params.droughtDays / 50) * 22).toFixed(1)} bu/ac loss
+          </p>
         </div>
 
         {/* Pest Risk Level Slider */}
@@ -79,6 +93,14 @@ export function ParametersSidebar({ params, setParams, onRunSimulation, isSimula
             onChange={(e) => handleParamChange('pestRisk', e.target.value)}
             className="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-[#EAB308]"
           />
+          <div className="flex justify-between text-[9px] text-stone-400">
+            <span>No Risk</span>
+            <span>50% (High)</span>
+            <span>100% (Critical)</span>
+          </div>
+          <p className="text-[9px] text-stone-400 italic">
+            Pests exploit weakened plants — multiplicative with heat + drought.
+          </p>
         </div>
       </div>
 
@@ -111,8 +133,8 @@ export function ParametersSidebar({ params, setParams, onRunSimulation, isSimula
             </>
           ) : (
             <>
-              <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-              Run 50 Scenarios
+              <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+              Run Full AI Pipeline
             </>
           )}
         </button>

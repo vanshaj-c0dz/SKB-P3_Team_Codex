@@ -2,10 +2,14 @@
 import { motion } from "framer-motion";
 
 export function WeatherCalendarHeatmap({ results }) {
-  if (!results || !results.xai_insights || !results.xai_insights.env_daily_importance) {
+  if (!results || !results.xai_insights || !results.xai_insights.env_daily_importance || results.xai_insights.env_daily_importance.length === 0) {
     return (
-      <div className="bg-surface-container rounded-2xl p-6 h-[250px] flex items-center justify-center border border-outline-variant/15">
-        <p className="text-sm font-label text-on-surface-variant">Awaiting XAI Enviromics insights...</p>
+      <div className="bg-surface-container rounded-2xl p-6 h-[250px] flex flex-col items-center justify-center gap-3 border border-outline-variant/15">
+        <span className="material-symbols-outlined text-outline text-4xl">calendar_month</span>
+        <p className="text-sm font-label font-bold text-on-surface-variant">Enviromics Vulnerability Calendar</p>
+        <p className="text-xs text-on-surface-variant/60 text-center max-w-[230px]">
+          Awaiting 365-day XAI attribution data — run a simulation to reveal critical stress windows.
+        </p>
       </div>
     );
   }

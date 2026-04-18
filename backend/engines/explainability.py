@@ -21,20 +21,20 @@ class ModelExplainer:
 		model: nn.Module,
 		genomic_tensor: Tensor,
 		env_tensor: Tensor,
+		soil_tensor: Tensor,
 		target_trait_index: int = 0,
-	) -> tuple[Tensor, Tensor]:
+	) -> tuple[Tensor, Tensor, Tensor]:
 		"""Compute integrated-gradient attributions for genomic and weather inputs.
 
 		Args:
 			model: Trained multimodal model returning trait dictionary.
 			genomic_tensor: DNA tensor of shape (B, C, H, W) or legacy SNP tensor (B, 1, Num_SNPs).
 			env_tensor: Weather tensor of shape (B, Seq_Len, Num_Features).
+			soil_tensor: Soil tensor of shape (B, Num_Soil_Features).
 			target_trait_index: Index of trait to explain from model output ordering.
 
 		Returns:
-			Tuple (genomic_attr, env_attr) where:
-			- genomic_attr has shape matching genomic_tensor
-			- env_attr has shape matching env_tensor
+			Tuple (genomic_attr, env_attr, soil_attr) where shapes match original tensors.
 		"""
 		if genomic_tensor.ndim != 3:
 			if genomic_tensor.ndim != 4:
@@ -53,14 +53,16 @@ class ModelExplainer:
 		model_device = next(model.parameters()).device
 		genomic_input = genomic_tensor.to(model_device)
 		env_input = env_tensor.to(model_device)
+		soil_input = soil_tensor.to(model_device)
 		genomic_baseline = torch.zeros_like(genomic_input)
 		env_baseline = torch.zeros_like(env_input)
+		soil_baseline = torch.zeros_like(soil_input)
 
 		# Prefer model-declared trait ordering when available.
 		configured_traits: list[str] = list(getattr(model, "target_traits", []))
 
-		def forward_func(genomic_x: Tensor, env_x: Tensor) -> Tensor:
-			outputs: Any = model(genomic_x, env_x)
+		def forward_func(genomic_x: Tensor, env_x: Tensor, soil_x: Tensor) -> Tensor:
+			outputs: Any = model(genomic_x, env_x, soil_x)
 			if not isinstance(outputs, dict) or not outputs:
 				raise TypeError("Model must return a non-empty dictionary of trait predictions")
 
@@ -86,33 +88,36 @@ class ModelExplainer:
 		model.eval()
 		ig = IntegratedGradients(forward_func)
 		attrs = ig.attribute(
-			inputs=(genomic_input, env_input),
-			baselines=(genomic_baseline, env_baseline),
+			inputs=(genomic_input, env_input, soil_input),
+			baselines=(genomic_baseline, env_baseline, soil_baseline),
 		)
 
-		if not isinstance(attrs, tuple) or len(attrs) != 2:
-			raise RuntimeError("Captum IntegratedGradients did not return a (genomic_attr, env_attr) tuple")
+		if not isinstance(attrs, tuple) or len(attrs) != 3:
+			raise RuntimeError("Captum IntegratedGradients did not return a (genomic_attr, env_attr, soil_attr) tuple")
 
-		genomic_attr, env_attr = attrs
-		return genomic_attr, env_attr
+		genomic_attr, env_attr, soil_attr = attrs
+		return genomic_attr, env_attr, soil_attr
 
 	def extract_top_features(
 		self,
 		genomic_attr: Tensor,
 		env_attr: Tensor,
+		soil_attr: Tensor,
 		top_k: int = 5,
-	) -> dict[str, list[int]]:
+	) -> dict[str, Any]:
 		"""Extract top SNP indices and most critical weather days.
 
 		Args:
 			genomic_attr: Tensor shaped like genomic input, expected (B, 1, Num_SNPs).
 			env_attr: Tensor shaped like environment input, expected (B, Seq_Len, Num_Features).
+			soil_attr: Tensor shaped like soil input, expected (B, Num_Soil_Features).
 			top_k: Number of top attributions to return.
 
 		Returns:
 			Dictionary containing:
 			- top_snps: SNP indices with highest absolute attribution
 			- critical_weather_days: day indices with highest importance
+			- soil_importance: importance vector for soil features
 		"""
 		if genomic_attr.ndim != 3:
 			if genomic_attr.ndim != 4:
@@ -155,11 +160,15 @@ class ModelExplainer:
 		k_days = min(top_k, int(day_importance.numel()))
 		top_day_indices = torch.topk(day_importance, k=k_days).indices.tolist()
 
+		# Soil Importance
+		soil_importance = soil_attr.abs().mean(dim=0)
+
 		return {
 			"top_snps": [int(i) for i in top_snp_indices],
 			"snp_importance_scores": snp_importance_scores,
 			"critical_weather_days": [int(i) for i in top_day_indices],
 			"env_daily_importance": [float(x) for x in day_importance.tolist()],
+			"soil_importance_profile": [float(x) for x in soil_importance.tolist()],
 		}
 
 

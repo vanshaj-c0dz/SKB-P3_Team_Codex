@@ -26,6 +26,7 @@ export default function OmicsFusionPage() {
 
   // Extract relevant props for sub-components safely
   const snpIndices = results?.xai_insights?.top_snp_indices || [];
+  const snpImportanceScores = results?.xai_insights?.snp_importance_scores || [];
   const genotypeCount = results?.genotype_count ?? null;
   const xaiInsights = results?.xai_insights;
   const scenarioData = results?.scenario_chart_data;
@@ -53,11 +54,8 @@ export default function OmicsFusionPage() {
                Awaiting Simulation
             </span>
           )}
-          <button className="flex items-center gap-2 bg-surface-container hover:bg-surface-container-highest transition-colors px-4 py-2 rounded-xl border border-outline-variant/20 text-sm font-label font-bold text-stone-500">
-            <span className="material-symbols-outlined text-[20px]">filter_list</span>
-            Configure Modalities
-          </button>
         </div>
+
       </motion.div>
 
       <motion.div 
@@ -67,7 +65,7 @@ export default function OmicsFusionPage() {
         className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[500px]"
       >
         <motion.div variants={itemVariants} className="h-full">
-          <ChromosomeViz snpIndices={snpIndices} genotypeCount={genotypeCount} />
+          <ChromosomeViz snpIndices={snpIndices} genotypeCount={genotypeCount} snpImportanceScores={snpImportanceScores} />
         </motion.div>
 
         <motion.div variants={itemVariants} className="h-full">

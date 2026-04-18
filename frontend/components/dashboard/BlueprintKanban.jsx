@@ -4,8 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 export function BlueprintKanban({ results }) {
   if (!results || !results.soil_fixation_blueprint || !results.soil_fixation_blueprint.action_plan) {
     return (
-      <div className="bg-surface-container rounded-2xl p-6 h-[250px] flex items-center justify-center border border-outline-variant/15">
-        <p className="text-sm font-label text-on-surface-variant">Awaiting Agronomic Blueprint generation...</p>
+      <div className="bg-surface-container rounded-2xl p-6 h-[250px] flex flex-col items-center justify-center gap-3 border border-outline-variant/15">
+        <span className="material-symbols-outlined text-outline text-4xl">assignment_turned_in</span>
+        <p className="text-sm font-label font-bold text-on-surface-variant">Agronomic Action Blueprint</p>
+        <p className="text-xs text-on-surface-variant/60 text-center max-w-[240px]">
+          Awaiting XAI critical day analysis — the Kanban is generated from genome-weather interaction scores.
+        </p>
       </div>
     );
   }

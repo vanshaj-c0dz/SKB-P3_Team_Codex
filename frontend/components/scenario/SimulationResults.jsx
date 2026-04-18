@@ -10,13 +10,17 @@ export function SimulationResults({ params, result }) {
 
     // Calculate Multi-Scenario Distribution (Mock 50 scenarios)
     const scenarioDistribution = useMemo(() => {
+        // Scenario distribution: spread depends on combined stress magnitude
+        const stressMagnitude = parseFloat(result.heatStress || 0) + parseFloat(result.droughtStress || 0) + parseFloat(result.pestImpact || 0);
+        // Higher stress → wider uncertainty band (P90-P10 range grows)
+        const spread = Math.min(40, 8 + stressMagnitude * 0.5);
         const baseResilience = parseFloat(result.resilience);
         return [
-            { label: "P10 Worst-Case", value: Math.max(0, baseResilience - 22).toFixed(0) },
-            { label: "Median Scenario", value: baseResilience },
-            { label: "P90 Best-Case", value: Math.min(100, baseResilience + 12).toFixed(0) }
+            { label: "P10 Worst-Case", value: Math.max(0, baseResilience - spread).toFixed(0) },
+            { label: "Median Scenario", value: baseResilience.toFixed(0) },
+            { label: "P90 Best-Case", value: Math.min(100, baseResilience + spread * 0.55).toFixed(0) }
         ];
-    }, [result.resilience]);
+    }, [result.resilience, result.heatStress, result.droughtStress, result.pestImpact]);
 
     return (
         <div className="flex flex-col gap-6">
@@ -36,7 +40,14 @@ export function SimulationResults({ params, result }) {
                         <span className="text-sm text-stone-500">bu/ac</span>
                     </div>
                     <div className="text-xs text-stone-500 mt-2">
-                        Baseline: 75.0 bu/ac • Loss: {(75.0 - parseFloat(result.yield)).toFixed(1)} bu
+                        Baseline: 75.0 bu/ac •{" "}
+                        <span className="text-error font-semibold">Loss: {Math.max(0, 75.0 - parseFloat(result.yield)).toFixed(1)} bu</span>
+                    </div>
+                    {/* Stress breakdown mini-bar */}
+                    <div className="mt-2 flex gap-1 text-[9px] font-bold">
+                        <span className="px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-600">Heat {result.heatStress}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-600">Drought {result.droughtStress}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-700">Pest {parseFloat(result.pestImpact || 0).toFixed(1)}</span>
                     </div>
                 </motion.div>
 
@@ -75,11 +86,15 @@ export function SimulationResults({ params, result }) {
                         <span className="text-xs font-bold uppercase tracking-wider">Top Recommendation</span>
                     </div>
                     <div className="font-bold text-primary-container">
-                        {parseFloat(result.resilience) < 40 ? "Avoid Planting" : "Select Parent A-12"}
+                        {parseFloat(result.resilience) < 40 ? "Avoid Planting" :
+                         parseFloat(result.resilience) < 65 ? "Activate Stress Protocol" :
+                         "Select Parent A-12"}
                     </div>
                     <p className="text-xs text-stone-500 mt-2 leading-relaxed">
                         {parseFloat(result.resilience) < 40
-                            ? "CRS below threshold. Recommend drought-tolerant GM line."
+                            ? "CRS below critical threshold. Deploy drought-tolerant GM line immediately."
+                            : parseFloat(result.resilience) < 65
+                            ? `Moderate stress detected. Mulch soil & delay top-dressing. Heat loss: ${result.heatStress} bu.`
                             : "SNP rs104 (Heat Shock Protein) active. Increase K by 12%."}
                     </p>
                 </motion.div>
@@ -109,7 +124,11 @@ export function SimulationResults({ params, result }) {
                 </div>
 
                 <div className="bg-surface-container rounded-2xl p-6 border border-outline-variant/10">
-                    <XAIDriversPanel drivers={result.drivers} />
+                    <XAIDriversPanel
+                        drivers={result.drivers}
+                        xaiInsights={result.raw?.xai_insights}
+                        fatalDays={result.raw?.xai_insights?.fatal_weather_days}
+                    />
                 </div>
             </div>
         </div>

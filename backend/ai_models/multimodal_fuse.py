@@ -6,7 +6,7 @@ import torch
 from torch import Tensor, nn
 
 from ai_models.crop_dngp import CropDNGPBackbone
-from ai_models.env_encoder import EnvTransformerEncoder
+from ai_models.env_encoder import EnvTransformerEncoder, SoilEncoder
 
 
 class TraitHead(nn.Module):
@@ -135,6 +135,7 @@ class MasterBreedingModel(nn.Module):
 	Inputs:
 		genomic_x: (batch_size, 3, 206, 206)
 		env_x: (batch_size, sequence_length, num_weather_features)
+		soil_x: (batch_size, num_soil_features)
 
 	Outputs:
 		Dictionary[str, Tensor] with trait-specific tensors of shape (batch_size, 1)
@@ -145,11 +146,14 @@ class MasterBreedingModel(nn.Module):
 		target_traits: Iterable[str],
 		*,
 		num_weather_features: int,
+		num_soil_features: int = 12,
 		genomic_feature_dim: int = 256,
 		env_feature_dim: int = 128,
+		soil_feature_dim: int = 64,
 		fusion_dim: int = 256,
 		trait_hidden_dim: int = 128,
 		dropout: float = 0.25,
+		genomic_weights_path: str | None = None,
 	) -> None:
 		super().__init__()
 
@@ -165,6 +169,7 @@ class MasterBreedingModel(nn.Module):
 			image_size=206,
 			strict_image_size=False,
 			dropout=dropout,
+			pretrained_weights_path=genomic_weights_path,
 		)
 		self.env_encoder = EnvTransformerEncoder(
 			num_weather_features=num_weather_features,
@@ -174,10 +179,15 @@ class MasterBreedingModel(nn.Module):
 			dim_feedforward=max(env_feature_dim * 2, 128),
 			dropout=dropout,
 		)
+		self.soil_encoder = SoilEncoder(
+			num_soil_features=num_soil_features,
+			soil_feature_dim=soil_feature_dim,
+			dropout=dropout,
+		)
 
 		self.fusion = CrossModalFusion(
 			genomic_dim=genomic_feature_dim,
-			env_dim=env_feature_dim,
+			env_dim=env_feature_dim + soil_feature_dim,
 			fusion_dim=fusion_dim,
 			num_heads=4,
 			dropout=dropout,
@@ -190,18 +200,24 @@ class MasterBreedingModel(nn.Module):
 			}
 		)
 
-	def forward(self, genomic_x: Tensor, env_x: Tensor) -> dict[str, Tensor]:
+	def forward(self, genomic_x: Tensor, env_x: Tensor, soil_x: Tensor) -> dict[str, Tensor]:
 		"""Run full multimodal forward pass.
 
 		Args:
-			genomic_x: SNP tensor with shape (B, 1, N).
+			genomic_x: SNP tensor with shape (B, ...).
 			env_x: Weather tensor with shape (B, T, Fw).
+			soil_x: Soil texture tensor with shape (B, Fs).
 
 		Returns:
 			Dict mapping trait names to regression outputs of shape (B, 1).
 		"""
 		genomic_features = self.genomic_backbone(genomic_x)  # (B, G)
-		env_features = self.env_encoder(env_x)  # (B, E)
+		weather_features = self.env_encoder(env_x)           # (B, Ew)
+		soil_features = self.soil_encoder(soil_x)            # (B, Es)
+		
+		# Combine environmental contexts
+		env_features = torch.cat([weather_features, soil_features], dim=-1) # (B, Ew + Es)
+
 		fused_features = self.fusion(genomic_features, env_features)  # (B, F)
 
 		outputs: dict[str, Tensor] = {}

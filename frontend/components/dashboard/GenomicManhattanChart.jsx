@@ -3,10 +3,14 @@ import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 export function GenomicManhattanChart({ results }) {
-  if (!results || !results.xai_insights || !results.xai_insights.snp_importance_scores) {
+  if (!results || !results.xai_insights || !results.xai_insights.snp_importance_scores || results.xai_insights.snp_importance_scores.length === 0) {
     return (
-      <div className="bg-surface-container rounded-2xl p-6 h-[400px] flex items-center justify-center border border-outline-variant/15">
-        <p className="text-sm font-label text-on-surface-variant">Awaiting XAI Genomic insights...</p>
+      <div className="bg-surface-container rounded-2xl p-6 h-[380px] flex flex-col items-center justify-center gap-3 border border-outline-variant/15">
+        <span className="material-symbols-outlined text-outline text-4xl">genetics</span>
+        <p className="text-sm font-label font-bold text-on-surface-variant">XAI Genomic Inspector</p>
+        <p className="text-xs text-on-surface-variant/60 text-center max-w-[220px]">
+          Run a simulation with a VCF file to see Captum Integrated Gradient attributions per SNP locus.
+        </p>
       </div>
     );
   }

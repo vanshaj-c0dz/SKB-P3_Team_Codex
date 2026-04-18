@@ -2,10 +2,14 @@
 import { motion } from "framer-motion";
 
 export function ParentalMatchmaker({ results }) {
-  if (!results || !results.top_parental_crosses) {
+  if (!results || !results.top_parental_crosses || results.top_parental_crosses.length === 0) {
     return (
-      <div className="bg-surface-container rounded-2xl p-6 h-[300px] flex items-center justify-center border border-outline-variant/15">
-        <p className="text-sm font-label text-on-surface-variant">Awaiting parental matchmaking data...</p>
+      <div className="bg-surface-container rounded-2xl p-6 h-[300px] flex flex-col items-center justify-center gap-3 border border-outline-variant/15">
+        <span className="material-symbols-outlined text-outline text-4xl">family_history</span>
+        <p className="text-sm font-label font-bold text-on-surface-variant">Smart Parental Matchmaker</p>
+        <p className="text-xs text-on-surface-variant/60 text-center max-w-[230px]">
+          AI-recommended crosses are generated after yield and drought predictions across all genotypes.
+        </p>
       </div>
     );
   }

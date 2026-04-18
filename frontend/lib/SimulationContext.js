@@ -13,9 +13,10 @@ const SimulationContext = createContext(null);
 export function SimulationProvider({ children }) {
   const [results, setResults]     = useState(null);    // Full backend JSON response
   const [formInputs, setFormInputs] = useState(null);  // What the user submitted
+  const [uploadedFileInfo, setUploadedFileInfo] = useState(null); // File metadata for VcfDropzone
 
   return (
-    <SimulationContext.Provider value={{ results, setResults, formInputs, setFormInputs }}>
+    <SimulationContext.Provider value={{ results, setResults, formInputs, setFormInputs, uploadedFileInfo, setUploadedFileInfo }}>
       {children}
     </SimulationContext.Provider>
   );

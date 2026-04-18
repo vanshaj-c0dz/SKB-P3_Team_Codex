@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
+
 
 export function SideNavBar({ navItems }) {
   const pathname = usePathname();
@@ -23,7 +24,10 @@ export function SideNavBar({ navItems }) {
         </div>
       </div>
 
-      <button className="mb-8 w-full py-3 px-4 bg-primary-container text-on-primary-container rounded-xl font-label text-sm font-medium hover:bg-surface-tint transition-colors duration-200 flex items-center justify-center gap-2">
+      <button
+        onClick={() => { window.location.href = '/'; }}
+        className="mb-8 w-full py-3 px-4 bg-primary-container text-on-primary-container rounded-xl font-label text-sm font-medium hover:bg-surface-tint transition-colors duration-200 flex items-center justify-center gap-2"
+      >
         <span className="material-symbols-outlined" style={{fontVariationSettings: "'FILL' 1"}}>add</span>
         Run New Simulation
       </button>

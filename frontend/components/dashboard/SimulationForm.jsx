@@ -4,11 +4,15 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { VcfDropzone } from "./VcfDropzone";
 
+import { useSimulation } from "@/lib/SimulationContext";
+
 // Dynamically import map to avoid SSR window issues
 const LocationMap = dynamic(() => import("./LocationMap"), { ssr: false, loading: () => <div className="w-full h-full bg-surface-container-low animate-pulse rounded-xl"></div> });
 
 export function SimulationForm({ onSimulate, isSimulating }) {
-  const [formData, setFormData] = useState({
+  const { formInputs, uploadedFileInfo, setUploadedFileInfo } = useSimulation();
+
+  const [formData, setFormData] = useState(formInputs || {
     file: null,
     session_id: null,      // set by VcfDropzone after upload
     locationCoords: null,  // {lat, lng}
@@ -49,13 +53,15 @@ export function SimulationForm({ onSimulate, isSimulating }) {
         <div className="flex-1 flex flex-col gap-6">
           {/* VCF Upload — powered by VcfDropzone (Task 1) */}
           <VcfDropzone
-            onFileReady={(info) =>
+            initialFileInfo={uploadedFileInfo}
+            onFileReady={(info) => {
+              setUploadedFileInfo(info);
               setFormData((prev) => ({
                 ...prev,
                 file: info?.file ?? null,
                 session_id: info?.session_id ?? null,
-              }))
-            }
+              }));
+            }}
           />
 
           <div className="grid grid-cols-2 gap-4">

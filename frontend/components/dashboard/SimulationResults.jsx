@@ -7,7 +7,7 @@ import { GenomicManhattanChart } from "./GenomicManhattanChart";
 import { WeatherCalendarHeatmap } from "./WeatherCalendarHeatmap";
 import { ParentalMatchmaker } from "./ParentalMatchmaker";
 import { BlueprintKanban } from "./BlueprintKanban";
-import { ClimateRadarChart } from "./ClimateRadarChart";
+
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -62,12 +62,20 @@ export function SimulationResults({ results, onClose }) {
     resilience: c.resilience_score,
   }));
 
-  // Stress comparison static reference data
+  // Stress comparison — dynamic: compute % impact vs baseline from scenario data
+  const baseline = results.baseline_yield ?? 0;
+  const scenarios = results.scenario_chart_data ?? [];
+  const _avgYield = (from, to) => {
+    const slice = scenarios.slice(from, to);
+    if (!slice.length || !baseline) return 0;
+    const avg = slice.reduce((s, x) => s + x.yield, 0) / slice.length;
+    return Math.round(((avg - baseline) / baseline) * 100);
+  };
   const stressData = [
-    { name: "Heat", impact: -15 },
-    { name: "Water", impact: -22 },
-    { name: "Pest", impact: -5 },
-    { name: "Salinity", impact: -8 },
+    { name: "Heat",     impact: _avgYield(0, 10) },
+    { name: "Drought",  impact: _avgYield(10, 20) },
+    { name: "Flood",    impact: _avgYield(20, 30) },
+    { name: "Combined", impact: _avgYield(30, 50) },
   ];
 
   return (
@@ -132,11 +140,8 @@ export function SimulationResults({ results, onClose }) {
       {/* Baseline vs Extreme Yield Dashboard (Task 4) */}
       <YieldComparisonChart results={results} />
 
-      {/* Batch 3: Climate Matrix and XAI Genomic Inspector */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ClimateRadarChart results={results} />
-        <GenomicManhattanChart results={results} />
-      </div>
+      {/* XAI Genomic Inspector — full width */}
+      <GenomicManhattanChart results={results} />
 
       {/* Batch 4: Enviromics Calendar and Parental Matchmaker */}
       <WeatherCalendarHeatmap results={results} />
@@ -204,23 +209,7 @@ export function SimulationResults({ results, onClose }) {
 
       {/* Charts Row ends here */}
 
-      {/* Next Steps */}
-      {results.next_steps?.length > 0 && (
-        <motion.div variants={itemVariants} className="bg-surface-container rounded-xl p-6 border border-outline-variant/15">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="material-symbols-outlined text-secondary">rocket_launch</span>
-            <h3 className="font-headline font-bold text-base text-on-surface">Recommended Next Steps</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {results.next_steps.map((step, i) => (
-              <div key={i} className="flex gap-2 text-sm text-on-surface-variant">
-                <span className="material-symbols-outlined text-outline text-base mt-0.5">arrow_forward</span>
-                {step}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+
 
     </motion.div>
   );

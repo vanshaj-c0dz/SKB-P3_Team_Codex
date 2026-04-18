@@ -112,13 +112,14 @@ class ClimateScenarioGenerator:
 		logger.info("Generated %d climate scenarios with shape %s", self.num_scenarios, tuple(batch_env_tensors.shape))
 		return batch_env_tensors
 
-	def run_inference(self, model: nn.Module, genomic_tensor: Tensor, batch_env_tensors: Tensor) -> dict[str, Tensor]:
+	def run_inference(self, model: nn.Module, genomic_tensor: Tensor, batch_env_tensors: Tensor, batch_soil_tensors: Tensor) -> dict[str, Tensor]:
 		"""Run no-grad inference across all generated climate scenarios.
 
 		Args:
-			model: Multimodal model with signature model(genomic_x, env_x) returning dict[str, Tensor].
+			model: Multimodal model with signature model(genomic_x, env_x, soil_x) returning dict[str, Tensor].
 			genomic_tensor: Tensor of shape (1, 3, 206, 206).
 			batch_env_tensors: Tensor of shape (num_scenarios, sequence_length, num_features).
+			batch_soil_tensors: Tensor of shape (num_scenarios, num_soil_features).
 
 		Returns:
 			Dictionary of trait predictions, where each tensor has first dimension
@@ -139,10 +140,11 @@ class ClimateScenarioGenerator:
 		model_device = next(model.parameters()).device
 		expanded_genomic = expanded_genomic.to(model_device)
 		batch_env_tensors = batch_env_tensors.to(model_device)
+		batch_soil_tensors = batch_soil_tensors.to(model_device)
 
 		model.eval()
 		with torch.no_grad():
-			predictions = model(expanded_genomic, batch_env_tensors)
+			predictions = model(expanded_genomic, batch_env_tensors, batch_soil_tensors)
 
 		if not isinstance(predictions, dict):
 			raise TypeError("Model output must be a dictionary of trait predictions")

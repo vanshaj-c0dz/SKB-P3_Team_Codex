@@ -2,7 +2,7 @@
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { SideNavBar } from "@/components/layout/SideNavBar";
-import { TopAppBar } from "@/components/layout/TopAppBar";
+
 import { getDashboardData } from "@/lib/mockData";
 import { SimulationProvider } from "@/lib/SimulationContext";
 
@@ -33,7 +33,6 @@ export default function RootLayout({ children }) {
         <SimulationProvider>
           <SideNavBar navItems={data.navigation} />
           <div className="ml-64 flex-1 flex flex-col h-screen overflow-hidden relative">
-            <TopAppBar />
             {children}
           </div>
         </SimulationProvider>

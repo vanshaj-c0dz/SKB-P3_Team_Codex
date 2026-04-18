@@ -45,6 +45,7 @@ try:
     from backend.ai_models.physics_loss import PhysicsGuidedLoss
     from backend.data_pipeline.ingest_vcf import get_real_genomic_tensor
     from backend.data_pipeline.ingest_weather import get_real_weather_tensor
+    from backend.data_pipeline.ingest_soil import get_real_soil_tensor
     from backend.engines.scenario_sim import ClimateScenarioGenerator
     from backend.engines.explainability import ModelExplainer
 except ModuleNotFoundError as e:
@@ -59,6 +60,7 @@ def run_model_in_batches(
     model: MasterBreedingModel,
     genomic_tensor: torch.Tensor,
     weather_tensor: torch.Tensor,
+    soil_tensor: torch.Tensor,
     batch_size: int = 8
 ) -> Dict[str, torch.Tensor]:
     """
@@ -87,7 +89,8 @@ def run_model_in_batches(
             end = min(start + batch_size, genomic_tensor.size(0))
             chunk_outputs = model(
                 genomic_tensor[start:end],
-                weather_tensor[start:end]
+                weather_tensor[start:end],
+                soil_tensor[start:end]
             )
 
             if not isinstance(chunk_outputs, dict) or not chunk_outputs:
@@ -115,6 +118,8 @@ def generate_breeding_insights(
     max_samples: int = None,
     batch_inference_size: int = 8,
     model_weights_path: str = None,
+    heat_delta: float = None,
+    drought_multiplier: float = None,
 ) -> Dict[str, Any]:
     """
     🎯 Master Function: Complete AI breeding pipeline in one call.
@@ -132,6 +137,11 @@ def generate_breeding_insights(
         "Salinity Stress":             {"max_temp_increase": 3.0, "drought_multiplier": 0.4},
     }
     stress_params = STRESS_PARAM_MAP.get(stress_scenario, {"max_temp_increase": 5.0, "drought_multiplier": 0.3})
+    
+    if heat_delta is not None:
+        stress_params["max_temp_increase"] = heat_delta
+    if drought_multiplier is not None:
+        stress_params["drought_multiplier"] = drought_multiplier
 
     try:
         print(f"🚀 Initializing AI Engine for {crop_type} @ [{lat}, {lon}] | Stress: {stress_scenario}")
@@ -153,15 +163,30 @@ def generate_breeding_insights(
         single_weather = get_real_weather_tensor(lat=lat, lon=lon, year=2023)
         real_weather = single_weather.repeat(batch_size, 1, 1)
 
-        print(f"📊 Data loaded: DNA [{batch_size}, 3, 206, 206] | Weather [{batch_size}, 365, 5]")
+        print(f"🪨 Fetching real soil data from ISRIC OpenLandMap [{lat}, {lon}]...")
+        single_soil = get_real_soil_tensor(lat=lat, lon=lon)
+        real_soil = single_soil.repeat(batch_size, 1)
+
+        print(f"📊 Data loaded: DNA [{batch_size}, 3, 206, 206] | Weather [{batch_size}, 365, 5] | Soil [{batch_size}, 12]")
 
         # =====================================================================
         # PHASE 2: Model Initialization & Baseline Predictions
         # =====================================================================
         print("🧠 Initializing MasterBreedingModel...")
+
+        # Hybrid Architecture: Check for SoyDNGPNext genomic weights
+        soydngp_weights_path = Path(__file__).resolve().parents[1] / "ai_models" / "weights" / "soydngp_backbone.pt"
+        genomic_weights = str(soydngp_weights_path) if soydngp_weights_path.exists() else None
+        
+        if genomic_weights:
+            print(f"🧬 Found hybrid SoyDNGP weights! Injecting into genomic backbone: {genomic_weights}")
+        else:
+            print("⚠️ No SoyDNGP weights found in backend/ai_models/weights/soydngp_backbone.pt. Using default initialization.")
+
         model = MasterBreedingModel(
             target_traits=["yield", "drought_score"],
-            num_weather_features=5
+            num_weather_features=5,
+            genomic_weights_path=genomic_weights
         )
 
         if model_weights_path and Path(model_weights_path).exists():
@@ -171,11 +196,11 @@ def generate_breeding_insights(
                 strict=False
             )
         else:
-            print("⚠️ No trained weights found. Using random initialization.")
+            print("⚠️ No overall trained weights found. Using model initialization weights.")
 
         print("🔮 Running baseline predictions (inference mode)...")
         baseline_predictions = run_model_in_batches(
-            model, real_dna, real_weather, batch_size=batch_inference_size
+            model, real_dna, real_weather, real_soil, batch_size=batch_inference_size
         )
 
         # Convert to JSON-serializable format
@@ -200,8 +225,10 @@ def generate_breeding_insights(
 
         # Use first genotype as representative for scenario inference
         single_dna = real_dna[0].unsqueeze(0)                     # [1, 3, 206, 206]
+        single_soil_scenario = single_soil.repeat(50, 1)          # Repeated 50 times for the 50 weather scenarios
+        
         print("🧪 Running model across all 50 climate scenarios...")
-        scenario_predictions = scenario_engine.run_inference(model, single_dna, fifty_scenarios)
+        scenario_predictions = scenario_engine.run_inference(model, single_dna, fifty_scenarios, single_soil_scenario)
 
         # Build per-scenario JSON: [{scenario, yield, drought_score}, ...]
         scenario_yield_list = scenario_predictions.get("yield", torch.zeros(50, 1)).squeeze().tolist()
@@ -242,10 +269,10 @@ def generate_breeding_insights(
         # =====================================================================
         print("🔍 Running Captum XAI for feature importance...")
         explainer = ModelExplainer()
-        genomic_attr, env_attr = explainer.explain_prediction(
-            model, single_dna, reference_weather, target_trait_index=0
+        genomic_attr, env_attr, soil_attr = explainer.explain_prediction(
+            model, single_dna, reference_weather, single_soil, target_trait_index=0
         )
-        insights = explainer.extract_top_features(genomic_attr, env_attr)
+        insights = explainer.extract_top_features(genomic_attr, env_attr, soil_attr)
 
         # =====================================================================
         # PHASE 5: Breeding Recommendations — from actual per-sample predictions
@@ -298,6 +325,8 @@ def generate_breeding_insights(
             "crop_type":               crop_type,
             "stress_scenario":         stress_scenario,
             "critical_growth_stages":  list(set(critical_stages)),
+            "real_soil_properties":    [float(x) for x in single_soil.squeeze().tolist()],
+            "soil_importance_profile": insights.get("soil_importance_profile", []),
             "action_plan": [
                  {
                      "id": "kan-1",
